@@ -1,4 +1,4 @@
-import React, { FC, ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 import { UsersIcon, FileTextIcon, AlertTriangleIcon, HeartPulseIcon, BriefcaseIcon } from './icons';
 
 interface SummaryStatsProps {
@@ -7,10 +7,6 @@ interface SummaryStatsProps {
   totalTriples: number;
   totalOneToOnes: number;
   totalFloats: number;
-  chargeNurses: {
-    day: string;
-    night: string;
-  };
   historicalRosterCount: number;
 }
 
@@ -33,9 +29,8 @@ export const SummaryStats: FC<SummaryStatsProps> = ({
   totalTriples,
   totalOneToOnes,
   totalFloats,
-  chargeNurses,
   historicalRosterCount
-}) => {
+  }) => {
   return (
     <>
       <div className="mb-4">

@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { NurseStats } from '../types';
 import { NurseCard } from './NurseCard';
 import { SummaryStats } from './SummaryStats';
@@ -18,9 +18,7 @@ interface DashboardProps {
     totalOneToOnes: number;
     totalFloats: number;
   };
-  chargeNurses: { day: string, night: string };
   allChargeNursesForFilter: string[];
-  rosterDate: string;
   nursesToDisplay: NurseStats[];
   searchTerm: string;
   onSearchTermChange: (term: string) => void;
@@ -54,9 +52,7 @@ const FilterCheckbox: FC<{ label: string; checked: boolean; onChange: () => void
 export const Dashboard: FC<DashboardProps> = ({
   nurseStats,
   summaryStats,
-  chargeNurses,
   allChargeNursesForFilter,
-  rosterDate,
   nursesToDisplay,
   searchTerm,
   onSearchTermChange,
@@ -107,7 +103,7 @@ export const Dashboard: FC<DashboardProps> = ({
 
       {dataAvailable && !isLoading && (
       <>
-        <SummaryStats {...summaryStats} chargeNurses={chargeNurses} historicalRosterCount={historicalRosterCount} />
+        <SummaryStats {...summaryStats} historicalRosterCount={historicalRosterCount} />
         <Charts nurseStats={nurseStats} />
         
         <div className="mt-8 bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
