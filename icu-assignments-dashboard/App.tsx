@@ -226,21 +226,31 @@ function App() {
             </p>
           </div>
           {view === 'roster' && (
-              <button onClick={handleClearRoster} title="Clear the live roster" className="flex items-center justify-center gap-2 h-[42px] px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-red-600 text-white hover:bg-red-700">
+              <button onClick={handleClearRoster} title="Clear the live roster" className="flex items-center justify-center gap-2 h-[42px] px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-red-600 text-white hover:bg-red-700 no-print">
                   <TrashIcon className="w-5 h-5 mr-1" />
                   <span>Clear Roster</span>
               </button>
           )}
         </header>
 
-         <nav className="flex items-center gap-4 mb-4">
+        {/* Print Button */}
+        <div className="mb-4 no-print">
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            Print This Page
+          </button>
+        </div>
+
+         <nav className="flex items-center gap-4 mb-4 no-print">
             <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 rounded-lg">
               <NavButton currentView={view} targetView="roster" setView={setView}><FileTextIcon className="w-5 h-5" /> Roster</NavButton>
               <NavButton currentView={view} targetView="dashboard" setView={setView}><BriefcaseIcon className="w-5 h-5" /> Dashboard</NavButton>
             </div>
         </nav>
 
-        <main>
+        <main className="print-area">
           {error && <div className="my-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg" role="alert"><p className="font-bold">An Error Occurred</p><p>{error}</p></div>}
           
           {view === 'roster' && liveRoster &&

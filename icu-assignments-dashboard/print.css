@@ -1,0 +1,40 @@
+/* Print-friendly styles for ICU Assignments Dashboard */
+
+@media print {
+  body, html {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print, nav, header, .no-print * {
+    display: none !important;
+  }
+  .print-area {
+    display: block !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  .bg-white, .bg-gray-100, .bg-gray-200, .bg-gray-50 {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .border, .border-black, .border-gray-200, .border-gray-300, .border-2 {
+    border-color: #000 !important;
+  }
+  button, input, select, textarea, .sr-only {
+    display: none !important;
+  }
+  a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+  .shadow-sm, .shadow-md, .shadow-lg {
+    box-shadow: none !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .print-area {
+    page-break-after: always;
+  }
+}
