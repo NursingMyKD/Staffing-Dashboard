@@ -1,4 +1,4 @@
-import React, { useMemo, FC } from 'react';
+import { useMemo, FC } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { NurseStats } from '../types';
 
@@ -6,7 +6,18 @@ interface ChartsProps {
   nurseStats: NurseStats[];
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface ChartDataItem {
+  name: string;
+  count: number;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string | number;
+}
+
+const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/80 p-3 border border-gray-300 rounded-lg backdrop-blur-sm shadow-md">
@@ -19,7 +30,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // Extracted ChartContent to be a stable, top-level component
-const ChartContent: FC<{data: any[], dataKey: string, fillColor: string}> = ({ data, dataKey, fillColor }) => {
+const ChartContent: FC<{data: ChartDataItem[]; dataKey: string; fillColor: string}> = ({ data, dataKey, fillColor }) => {
     if (data.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -51,7 +62,7 @@ const ChartContent: FC<{data: any[], dataKey: string, fillColor: string}> = ({ d
 
 
 const AssignmentsChart: FC<{
-  data: any[];
+  data: ChartDataItem[];
   title: string;
   dataKey: string;
   fillColor: string;

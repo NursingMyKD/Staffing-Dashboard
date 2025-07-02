@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, FC, ReactNode } from 'react';
+import { useState, useEffect, useMemo, FC, ReactNode } from 'react';
 import { AssignmentGrid } from './components/AssignmentGrid';
 import { readDocxFile, parseRosterFromHtml } from './services/docProcessor';
 import { Roster, NurseStats } from './types';
@@ -105,12 +105,12 @@ function App() {
         })
       );
       
-      setHistoricalRosters(prevRosters => {
-        const newRostersMap = new Map(prevRosters.map(r => [r.date, r]));
-        parsedRosters.forEach(r => {
+      setHistoricalRosters((prevRosters: Roster[]) => {
+        const newRostersMap = new Map(prevRosters.map((r: Roster) => [r.date, r]));
+        parsedRosters.forEach((r: Roster) => {
             newRostersMap.set(r.date, r); // Add or update based on date
         });
-        return Array.from(newRostersMap.values()).sort((a,b) => b.date.localeCompare(a.date));
+        return Array.from(newRostersMap.values()).sort((a: Roster, b: Roster) => b.date.localeCompare(a.date));
       });
       
     } catch (err: any) {
@@ -137,7 +137,7 @@ function App() {
   };
 
   const handleAssignmentFilterChange = (filter: AssignmentFilterType) => {
-    setAssignmentFilters(prev => {
+    setAssignmentFilters((prev: Set<AssignmentFilterType>) => {
         const newSet = new Set(prev);
         if (newSet.has(filter)) newSet.delete(filter);
         else newSet.add(filter);
@@ -176,13 +176,13 @@ function App() {
 
   const nursesToDisplay = useMemo(() => {
     return dashboardData.nurseStats
-      .filter(nurse => {
+      .filter((nurse: NurseStats) => {
         const nameMatch = nurse.name.toLowerCase().includes(searchTerm.toLowerCase());
         const chargeNurseMatch = !chargeNurseFilter || nurse.chargeNurse === chargeNurseFilter;
         const assignmentMatch = assignmentFilters.size === 0 || Array.from(assignmentFilters).every(filter => nurse[filter]);
         return nameMatch && chargeNurseMatch && assignmentMatch;
       })
-      .sort((a, b) => {
+      .sort((a: NurseStats, b: NurseStats) => {
         if (sortBy === 'name') return a.name.localeCompare(b.name);
         return b.patientCount - a.patientCount;
       });
@@ -193,8 +193,8 @@ function App() {
   };
 
   const availableNurses = useMemo(() => {
-    const dayNurses = new Set<string>((liveRoster.floats.day || []).filter(n => n && n.trim() !== ''));
-    const nightNurses = new Set<string>((liveRoster.floats.night || []).filter(n => n && n.trim() !== ''));
+    const dayNurses = new Set<string>((liveRoster.floats.day || []).filter((n: string) => n && n.trim() !== ''));
+    const nightNurses = new Set<string>((liveRoster.floats.night || []).filter((n: string) => n && n.trim() !== ''));
 
     for (const assignment of liveRoster.assignments) {
       if (assignment.rnDay && assignment.rnDay.trim()) dayNurses.add(assignment.rnDay.trim());
