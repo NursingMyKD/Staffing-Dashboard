@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { NurseStats } from '../types';
 import { NurseCard } from './NurseCard';
 import { SummaryStats } from './SummaryStats';
@@ -18,7 +18,6 @@ interface DashboardProps {
     totalOneToOnes: number;
     totalFloats: number;
   };
-  chargeNurses: { day: string, night: string };
   allChargeNursesForFilter: string[];
   rosterDate: string;
   nursesToDisplay: NurseStats[];
@@ -54,9 +53,7 @@ const FilterCheckbox: FC<{ label: string; checked: boolean; onChange: () => void
 export const Dashboard: FC<DashboardProps> = ({
   nurseStats,
   summaryStats,
-  chargeNurses,
   allChargeNursesForFilter,
-  rosterDate,
   nursesToDisplay,
   searchTerm,
   onSearchTermChange,
@@ -76,6 +73,18 @@ export const Dashboard: FC<DashboardProps> = ({
 }) => {
 
   const dataAvailable = historicalRosterCount > 0;
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onSearchTermChange(e.target.value);
+  };
+
+  const handleChargeFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onChargeNurseFilterChange(e.target.value);
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onSortByChange(e.target.value as SortByType);
+  };
 
   return (
     <div className="mt-2 text-black">
@@ -107,7 +116,7 @@ export const Dashboard: FC<DashboardProps> = ({
 
       {dataAvailable && !isLoading && (
       <>
-        <SummaryStats {...summaryStats} chargeNurses={chargeNurses} historicalRosterCount={historicalRosterCount} />
+        <SummaryStats {...summaryStats} historicalRosterCount={historicalRosterCount} />
         <Charts nurseStats={nurseStats} />
         
         <div className="mt-8 bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
@@ -119,7 +128,7 @@ export const Dashboard: FC<DashboardProps> = ({
                       type="text"
                       placeholder="Filter by name..."
                       value={searchTerm}
-                      onChange={(e) => onSearchTermChange(e.target.value)}
+                      onChange={handleSearchChange}
                       className="w-full bg-white border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                   />
                   <SearchIcon className="absolute left-3 bottom-2.5 w-5 h-5 text-gray-400" />
@@ -130,7 +139,7 @@ export const Dashboard: FC<DashboardProps> = ({
                   <select
                       id="charge-nurse-filter"
                       value={chargeNurseFilter}
-                      onChange={(e) => onChargeNurseFilterChange(e.target.value)}
+                      onChange={handleChargeFilterChange}
                       className="w-full bg-white border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
                   >
                       <option value="">All Charge Nurses</option>
@@ -168,7 +177,7 @@ export const Dashboard: FC<DashboardProps> = ({
                   <span className="text-sm text-gray-500">Sort by:</span>
                   <select
                       value={sortBy}
-                      onChange={(e) => onSortByChange(e.target.value as SortByType)}
+                      onChange={handleSortChange}
                       className="bg-white border-gray-300 rounded-md py-1 px-2 text-sm focus:ring-1 focus:ring-indigo-500 transition"
                   >
                       <option value="name">Name</option>

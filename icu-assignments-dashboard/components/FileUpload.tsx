@@ -1,4 +1,4 @@
-import React, { FC, ChangeEvent, DragEvent } from 'react';
+import { FC, ChangeEvent, DragEvent } from 'react';
 import { UploadCloudIcon } from './icons';
 
 interface FileUploadProps {

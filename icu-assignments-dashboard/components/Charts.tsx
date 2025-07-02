@@ -1,4 +1,4 @@
-import React, { useMemo, FC } from 'react';
+import { useMemo, FC } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { NurseStats } from '../types';
 
@@ -6,7 +6,17 @@ interface ChartsProps {
   nurseStats: NurseStats[];
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface ChartData {
+  name: string;
+  count: number;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+}
+const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/80 p-3 border border-gray-300 rounded-lg backdrop-blur-sm shadow-md">
@@ -19,7 +29,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // Extracted ChartContent to be a stable, top-level component
-const ChartContent: FC<{data: any[], dataKey: string, fillColor: string}> = ({ data, dataKey, fillColor }) => {
+interface ChartContentProps {
+  data: ChartData[];
+  dataKey: string;
+  fillColor: string;
+}
+
+const ChartContent: FC<ChartContentProps> = ({ data, dataKey, fillColor }) => {
     if (data.length === 0) {
       return (
         <div className="flex items-center justify-center h-full">
@@ -50,12 +66,14 @@ const ChartContent: FC<{data: any[], dataKey: string, fillColor: string}> = ({ d
 };
 
 
-const AssignmentsChart: FC<{
-  data: any[];
+interface AssignmentsChartProps {
+  data: ChartData[];
   title: string;
   dataKey: string;
   fillColor: string;
-}> = ({ data, title, dataKey, fillColor }) => {
+}
+
+const AssignmentsChart: FC<AssignmentsChartProps> = ({ data, title, dataKey, fillColor }) => {
   return (
     <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-800 mb-6">{title}</h3>

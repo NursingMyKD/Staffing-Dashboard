@@ -1,4 +1,4 @@
-import React, { memo, FC, ReactElement, cloneElement } from 'react';
+import { memo, FC, ReactElement, cloneElement } from 'react';
 import { NurseStats } from '../types';
 import { UsersIcon, AlertTriangleIcon, HeartPulseIcon, BriefcaseIcon, type IconProps } from './icons';
 
@@ -57,7 +57,7 @@ export const NurseCard: FC<NurseCardProps> = memo(({ nurseStats }) => {
           <div>
             <h4 className="text-xs text-gray-400 uppercase font-semibold mb-2">Assigned Patients</h4>
             <ul className="space-y-1 text-sm">
-              {nurseStats.patients.map(p => (
+              {nurseStats.patients.map((p: { room: string; patient: string }) => (
                 <li key={p.room} className="text-gray-600">
                   <span className="font-semibold text-gray-800">{p.room}:</span> {p.patient}
                 </li>

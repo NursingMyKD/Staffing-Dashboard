@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, FC, ReactNode } from 'react';
+import { useState, useEffect, useMemo, FC, ReactNode } from 'react';
 import { AssignmentGrid } from './components/AssignmentGrid';
 import { readDocxFile, parseRosterFromHtml } from './services/docProcessor';
-import { Roster, NurseStats } from './types';
+import { Roster } from './types';
 import { Dashboard } from './components/Dashboard';
 import { calculateNurseStats, calculateSummaryStats, processBatchRosters } from './services/statsService';
 import { exportNursesToCsv } from './services/exportService';
@@ -153,7 +153,7 @@ function App() {
 
   const dashboardData = useMemo(() => {
     if (historicalRosters.length === 0) {
-      return { nurseStats: [], summaryStats: { totalNurses: 0, totalPatients: 0, totalTriples: 0, totalOneToOnes: 0, totalFloats: 0 }, rosterDate: 'No data', chargeNurses: { day: '', night: '' }, allChargeNursesForFilter: [] };
+      return { nurseStats: [], summaryStats: { totalNurses: 0, totalPatients: 0, totalTriples: 0, totalOneToOnes: 0, totalFloats: 0 }, rosterDate: 'No data', allChargeNursesForFilter: [] };
     }
 
     const stats = historicalRosters.length > 1 ? processBatchRosters(historicalRosters) : calculateNurseStats(historicalRosters[0]);
@@ -169,7 +169,6 @@ function App() {
         nurseStats: stats,
         summaryStats: summary,
         rosterDate: historicalRosters.length === 1 ? historicalRosters[0].date : `${historicalRosters.length} days`,
-        chargeNurses: historicalRosters.length === 1 ? historicalRosters[0].chargeNurses : {day: 'Multiple', night: 'Multiple'},
         allChargeNursesForFilter: Array.from(allChargeNurses).sort(),
     };
   }, [historicalRosters]);

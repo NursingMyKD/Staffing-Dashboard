@@ -1,4 +1,4 @@
-import React, { FC, ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 import { UsersIcon, FileTextIcon, AlertTriangleIcon, HeartPulseIcon, BriefcaseIcon } from './icons';
 
 interface SummaryStatsProps {
@@ -7,14 +7,17 @@ interface SummaryStatsProps {
   totalTriples: number;
   totalOneToOnes: number;
   totalFloats: number;
-  chargeNurses: {
-    day: string;
-    night: string;
-  };
   historicalRosterCount: number;
 }
 
-const StatCard: FC<{ icon: ReactNode; title: string; value: string | number; color: string }> = ({ icon, title, value, color }) => (
+interface StatCardProps {
+  icon: ReactNode;
+  title: string;
+  value: string | number;
+  color: string;
+}
+
+const StatCard: FC<StatCardProps> = ({ icon, title, value, color }) => (
   <div className="bg-white p-5 rounded-lg border border-gray-200 flex items-center space-x-4 shadow-sm">
     <div className={`rounded-full p-3 bg-gray-100`}>
       {icon}
@@ -27,13 +30,12 @@ const StatCard: FC<{ icon: ReactNode; title: string; value: string | number; col
 );
 
 
-export const SummaryStats: FC<SummaryStatsProps> = ({ 
+export const SummaryStats: FC<SummaryStatsProps> = ({
   totalNurses,
   totalPatients,
   totalTriples,
   totalOneToOnes,
   totalFloats,
-  chargeNurses,
   historicalRosterCount
 }) => {
   return (

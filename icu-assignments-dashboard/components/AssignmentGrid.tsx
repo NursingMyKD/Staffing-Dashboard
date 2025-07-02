@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, FC, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, FC, KeyboardEvent, ChangeEvent } from 'react';
 import { Roster, AssignmentRow } from '../types';
 
 interface EditableCellProps {
@@ -33,18 +33,31 @@ const EditableCell: FC<EditableCellProps> = ({ initialValue, onSave, options, li
     }
   };
 
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setValue(e.target.value);
+  };
+
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={value || ''}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={handleSave}
-      onKeyDown={handleKeyDown}
-      list={listId}
-      placeholder={placeholder}
-      className={`w-full h-full bg-transparent p-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-sm ${className}`}
-    />
+    <>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value || ''}
+        onChange={handleChange}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        list={listId}
+        placeholder={placeholder}
+        className={`w-full h-full bg-transparent p-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-sm ${className}`}
+      />
+      {options && listId && (
+        <datalist id={listId}>
+          {options.map(opt => (
+            <option key={opt} value={opt} />
+          ))}
+        </datalist>
+      )}
+    </>
   );
 };
 
@@ -81,7 +94,7 @@ const EditableTextarea: FC<EditableTextareaProps> = ({ initialValue, onSave, pla
         <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
             onBlur={handleSave}
             placeholder={placeholder}
             className={`w-full bg-transparent p-1 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-sm resize-none overflow-hidden ${className}`}
@@ -136,7 +149,10 @@ export const AssignmentGrid: FC<AssignmentGridProps> = ({ roster, onRosterChange
     onRosterChange({ ...roster, assignments: newAssignments });
   };
   
-  const handleFieldChange = (field: keyof Roster | `chargeNurses.day` | `chargeNurses.night` | `pctsDay` | `pctsNight`, newValue: any) => {
+  const handleFieldChange = (
+    field: keyof Roster | `chargeNurses.day` | `chargeNurses.night` | `pctsDay` | `pctsNight`,
+    newValue: string
+  ) => {
     const newRoster = { ...roster };
     if (field === 'chargeNurses.day') newRoster.chargeNurses.day = newValue;
     else if (field === 'chargeNurses.night') newRoster.chargeNurses.night = newValue;
