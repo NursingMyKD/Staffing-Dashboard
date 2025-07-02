@@ -1,4 +1,3 @@
-
 import { Roster, AssignmentRow } from '../types';
 
 declare const mammoth: any;
@@ -52,16 +51,30 @@ function parseInfoTable(table: HTMLTableElement): Partial<Roster> {
     // Day Shift Row (usually the first complex one)
     const dayRow = rows.find(r => getRowTextFromCells(r).includes('7A-7P'));
     if (dayRow) {
-        const dateCell = Array.from(dayRow.cells).find(c => getCellText(c).toUpperCase().startsWith('DATE'));
+        // Try to find a cell that starts with 'DATE' (legacy)
+        let dateCell = Array.from(dayRow.cells).find(c => getCellText(c).toUpperCase().startsWith('DATE'));
+        let dateText = '';
         if (dateCell) {
-            const dateText = getCellText(dateCell).replace(/DATE:?/i, '').trim();
-            const potentialDate = new Date(dateText);
-            if (dateText && !isNaN(potentialDate.getTime())) {
-                const year = potentialDate.getFullYear();
-                // JS months are 0-indexed, so add 1
-                const month = String(potentialDate.getMonth() + 1).padStart(2, '0');
-                // Use getDate() which is 1-indexed
-                const day = String(potentialDate.getDate()).padStart(2, '0');
+            dateText = getCellText(dateCell).replace(/DATE:?/i, '').trim();
+        } else {
+            // Try to find a cell that looks like a date (e.g., 'Friday, April 4th, 2025')
+            dateCell = Array.from(dayRow.cells).find(c => /\b\w+, \w+ \d{1,2}(st|nd|rd|th)?, \d{4}\b/.test(getCellText(c)));
+            if (dateCell) {
+                dateText = getCellText(dateCell).trim();
+            }
+        }
+        if (dateText) {
+            // Try to parse the date string
+            let parsedDate = new Date(dateText);
+            if (isNaN(parsedDate.getTime())) {
+                // Try to remove ordinal suffixes (st, nd, rd, th)
+                const cleaned = dateText.replace(/(\d{1,2})(st|nd|rd|th)/, '$1');
+                parsedDate = new Date(cleaned);
+            }
+            if (!isNaN(parsedDate.getTime())) {
+                const year = parsedDate.getFullYear();
+                const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(parsedDate.getDate()).padStart(2, '0');
                 rosterPart.date = `${year}-${month}-${day}`;
             }
         }
