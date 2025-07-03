@@ -1,7 +1,34 @@
+// Import types
 import { Roster, AssignmentRow } from '../types';
+
+// If you need to define types for reference, uncomment and adapt as needed:
+/*
+export interface AssignmentRow {
+  room: string;
+  prec: string;
+  patient: string;
+  mrn: string;
+  status: string;
+  rnDay: string;
+  extDay: string;
+  rnNight: string;
+  extNight: string;
+}
+
+export interface Roster {
+  date: string;
+  pctsDay: string;
+  pctsNight: string;
+  chargeNurses: { day: string; night: string };
+  assignments: AssignmentRow[];
+  floats: { day: string[]; night: string[] };
+  respiratory: string[];
+}
+*/
+
 declare const mammoth: any;
 
-// --- Utility: Read .docx file as HTML ---
+// --- DOCX TO HTML ---
 export async function readDocxFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -22,15 +49,14 @@ export async function readDocxFile(file: File): Promise<string> {
   });
 }
 
-// --- Utility: Cell and List Parsing ---
+// --- UTILITIES ---
 const getCellText = (cell: HTMLElement | null | undefined): string =>
   cell ? cell.innerText.trim() : '';
+
 const extractListFromCell = (cell: HTMLElement | null | undefined): string[] =>
   getCellText(cell).split('\n').map(s => s.trim()).filter(Boolean);
 
-// --- Utility: Advanced Date Extraction ---
 const parseDate = (input: string): string => {
-  // Supports "Friday, April 4th, 2025" and variants
   const dateRegex = /\b(?:mon|tue|wed|thu|fri|sat|sun)\w*,?\s+\w+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/i;
   const match = input.match(dateRegex);
   if (match) {
@@ -49,9 +75,8 @@ const parseDate = (input: string): string => {
   return new Date().toISOString().split('T')[0];
 };
 
-// --- Utility: Header Column Mapping ---
 function autoMapHeaders(headerCells: string[], keys: string[]): { [k: string]: number } {
-  // Fuzzy map columns for each key (robust to extra columns, typos, etc.)
+  // Fuzzy map columns for each key
   const colIdx: { [k: string]: number } = {};
   for (const key of keys) {
     const idx = headerCells.findIndex(h => h.replace(/\s/g, '').toLowerCase().includes(key.toLowerCase().replace(/\s/g, '')));
@@ -60,11 +85,15 @@ function autoMapHeaders(headerCells: string[], keys: string[]): { [k: string]: n
   return colIdx;
 }
 
-// --- Main Assignment Grid + Bottom Sections ---
-function parseAssignmentsAndBottomSection(rows: HTMLTableRowElement[], startRoom = 501, endRoom = 532): {
-  assignments: AssignmentRow[],
-  floats: { day: string[], night: string[] },
-  respiratory: string[]
+// --- MAIN GRID AND SECTIONS ---
+function parseAssignmentsAndBottomSection(
+  rows: HTMLTableRowElement[],
+  startRoom = 501,
+  endRoom = 532
+): {
+  assignments: AssignmentRow[];
+  floats: { day: string[]; night: string[] };
+  respiratory: string[];
 } {
   const numRooms = endRoom - startRoom + 1;
   const assignments: AssignmentRow[] = Array.from({ length: numRooms }, (_, i) => ({
@@ -72,7 +101,8 @@ function parseAssignmentsAndBottomSection(rows: HTMLTableRowElement[], startRoom
     prec: '', patient: '', mrn: '', status: '',
     rnDay: '', extDay: '', rnNight: '', extNight: '',
   }));
-  let floats = { day: [], night: [] };
+  // --- FIX: Explicitly type floats
+  let floats: { day: string[]; night: string[] } = { day: [], night: [] };
   let respiratory: string[] = [];
 
   // Find grid header
@@ -82,11 +112,10 @@ function parseAssignmentsAndBottomSection(rows: HTMLTableRowElement[], startRoom
   const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>('th,td')).map(getCellText);
   const colMap = autoMapHeaders(headerCells, ['room', 'prec', 'patient', 'mrn', 'status', 'rnday', 'extday', 'rnnight', 'extnight']);
 
-  // End grid at first row containing any bottom label
   let gridEndIdx = rows.findIndex((r, i) => i > headerRowIdx && /(FLOAT|RESPIRATORY|CPU)/i.test(r.innerText));
   if (gridEndIdx === -1) gridEndIdx = rows.length;
 
-  // Assignment parsing loop
+  // Fill assignments
   for (let i = headerRowIdx + 1; i < gridEndIdx; ++i) {
     const row = rows[i];
     if (!row || !row.cells) continue;
@@ -122,18 +151,16 @@ function parseAssignmentsAndBottomSection(rows: HTMLTableRowElement[], startRoom
   return { assignments, floats, respiratory };
 }
 
-// --- Info Table/Block Parsing ---
+// --- INFO TABLE/BLOCK PARSING ---
 function parseInfoTable(table: HTMLTableElement): Partial<Roster> {
   const rows = Array.from(table.querySelectorAll('tr'));
   const roster: Partial<Roster> = { chargeNurses: { day: '', night: '' } };
 
   for (const row of rows) {
     const txt = row.innerText.toUpperCase();
-    // Parse date
     if (!roster.date && /\b(?:mon|tue|wed|thu|fri|sat|sun)/.test(txt)) {
       roster.date = parseDate(txt);
     }
-    // Parse PCTs (any shift)
     if (txt.includes('PCT')) {
       if (txt.includes('7A-7P') || txt.includes('DAY')) {
         const m = row.innerText.match(/PCT\S*:?\s*(.+?)\s*(?:7[aA]-7[pP]|DAY)/);
@@ -144,7 +171,6 @@ function parseInfoTable(table: HTMLTableElement): Partial<Roster> {
         if (m) roster.pctsNight = m[1].trim();
       }
     }
-    // Parse Charge Nurse (any shift)
     if (txt.includes('CHARGE NURSE')) {
       if (txt.includes('7A-7P') || txt.includes('DAY')) {
         const m = row.innerText.match(/CHARGE NURSE:\s*([\w\-]+)/i);
@@ -159,7 +185,7 @@ function parseInfoTable(table: HTMLTableElement): Partial<Roster> {
   return roster;
 }
 
-// --- Main Entry ---
+// --- MAIN ENTRYPOINT ---
 export const parseRosterFromHtml = (htmlString: string): Roster => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlString, 'text/html');
