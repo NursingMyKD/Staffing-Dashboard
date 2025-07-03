@@ -4,6 +4,7 @@ import { UsersIcon, AlertTriangleIcon, HeartPulseIcon, BriefcaseIcon, type IconP
 
 interface NurseCardProps {
   nurseStats: NurseStats;
+  currentDate?: string;
 }
 
 interface MetricPillProps {
@@ -30,7 +31,7 @@ const MetricPill: FC<MetricPillProps> = ({ text, icon, color, active }) => {
   );
 };
 
-export const NurseCard: FC<NurseCardProps> = memo(({ nurseStats }) => {
+export const NurseCard: FC<NurseCardProps> = memo(({ nurseStats, currentDate }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm transform hover:-translate-y-1 transition-all duration-300 ease-in-out">
       <div className="p-5">
@@ -57,11 +58,22 @@ export const NurseCard: FC<NurseCardProps> = memo(({ nurseStats }) => {
           <div>
             <h4 className="text-xs text-gray-400 uppercase font-semibold mb-2">Assigned Patients</h4>
             <ul className="space-y-1 text-sm">
-              {nurseStats.patients.map((p: { room: string; patient: string }) => (
-                <li key={p.room} className="text-gray-600">
-                  <span className="font-semibold text-gray-800">{p.room}:</span> {p.patient}
-                </li>
-              ))}
+              {Array.from(new Set(nurseStats.patients.map(p => `${p.room}|${p.patient}`)))
+                .map((uniqueKey, idx) => {
+                  const [room, patient] = uniqueKey.split('|');
+                  // Extract date if present in patient string (format: "Name (YYYY-MM-DD)")
+                  const dateMatch = patient.match(/\((\d{4}-\d{2}-\d{2})\)$/);
+                  const displayPatient = dateMatch ? patient.replace(/ \(\d{4}-\d{2}-\d{2}\)$/, '') : patient;
+                  const displayDate = dateMatch ? dateMatch[1] : (currentDate || undefined);
+                  return (
+                    <li key={`${room}-${displayPatient}-${displayDate || idx}`} className="text-gray-600">
+                      <span className="font-semibold text-gray-800">{room}:</span> {displayPatient}
+                      {displayDate && (
+                        <span className="ml-2 text-xs text-gray-400">({displayDate})</span>
+                      )}
+                    </li>
+                  );
+                })}
             </ul>
           </div>
         )}

@@ -19,6 +19,9 @@ interface DashboardProps {
     totalFloats: number;
   };
   allChargeNursesForFilter: string[];
+  allDatesForFilter: string[];
+  dateFilter: string;
+  onDateFilterChange: (date: string) => void;
   rosterDate: string;
   nursesToDisplay: NurseStats[];
   searchTerm: string;
@@ -54,6 +57,7 @@ export const Dashboard: FC<DashboardProps> = ({
   nurseStats,
   summaryStats,
   allChargeNursesForFilter,
+  allDatesForFilter,
   nursesToDisplay,
   searchTerm,
   onSearchTermChange,
@@ -69,7 +73,9 @@ export const Dashboard: FC<DashboardProps> = ({
   onFilesSelected,
   onClearHistory,
   isLoading,
-  historicalRosterCount
+  historicalRosterCount,
+  dateFilter,
+  onDateFilterChange
 }) => {
 
   const dataAvailable = historicalRosterCount > 0;
@@ -120,7 +126,7 @@ export const Dashboard: FC<DashboardProps> = ({
         <Charts nurseStats={nurseStats} />
         
         <div className="mt-8 bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
               <div className="relative w-full">
                   <label htmlFor="search" className="text-xs text-gray-500 mb-1 block">Search Nurse</label>
                   <input
@@ -144,6 +150,19 @@ export const Dashboard: FC<DashboardProps> = ({
                   >
                       <option value="">All Charge Nurses</option>
                       {allChargeNursesForFilter.map(name => <option key={name} value={name}>{name}</option>)}
+                  </select>
+              </div>
+
+              <div className="w-full">
+                  <label htmlFor="date-filter" className="text-xs text-gray-500 mb-1 block">Filter by Date</label>
+                  <select
+                      id="date-filter"
+                      value={dateFilter}
+                      onChange={e => onDateFilterChange(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-md py-2 px-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                  >
+                      <option value="">All Dates</option>
+                      {allDatesForFilter.map(date => <option key={date} value={date}>{date}</option>)}
                   </select>
               </div>
 
@@ -188,7 +207,7 @@ export const Dashboard: FC<DashboardProps> = ({
           {nursesToDisplay.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {nursesToDisplay.map(nurse => (
-                      <NurseCard key={nurse.name} nurseStats={nurse} />
+                      <NurseCard key={nurse.name} nurseStats={nurse} currentDate={dateFilter || undefined} />
                   ))}
               </div>
           ) : (
