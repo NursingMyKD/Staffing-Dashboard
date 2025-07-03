@@ -216,70 +216,78 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-2 sm:p-4 lg:p-6">
-      <div className="max-w-[1200px] mx-auto">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <div>
-             <h1 className="text-xl font-bold text-gray-800">ICU Assignments Dashboard</h1>
-             <p className="mt-1 text-sm text-gray-500">
-              {view === 'roster' ? `Manage the current day's assignments` : 'Analyze historical staffing data'}
-            </p>
-          </div>
-          {view === 'roster' && (
-              <button onClick={handleClearRoster} title="Clear the live roster" className="flex items-center justify-center gap-2 h-[42px] px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-red-600 text-white hover:bg-red-700 no-print">
-                  <TrashIcon className="w-5 h-5 mr-1" />
-                  <span>Clear Roster</span>
-              </button>
-          )}
-        </header>
-
-        {/* Print Button */}
-        <div className="mb-4 no-print">
-          <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
-          >
-            Print This Page
-          </button>
-        </div>
-
-         <nav className="flex items-center gap-4 mb-4 no-print">
-            <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 rounded-lg">
-              <NavButton currentView={view} targetView="roster" setView={setView}><FileTextIcon className="w-5 h-5" /> Roster</NavButton>
-              <NavButton currentView={view} targetView="dashboard" setView={setView}><BriefcaseIcon className="w-5 h-5" /> Dashboard</NavButton>
+    <div className="min-h-screen bg-gray-100">
+      <header className="bg-white shadow-sm">
+        <div className="max-w-[1200px] mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <div>
+               <h1 className="text-xl font-bold text-gray-800">ICU Assignments Dashboard</h1>
+               <p className="mt-1 text-sm text-gray-500">
+                {view === 'roster' ? `Manage the current day's assignments` : 'Analyze historical staffing data'}
+              </p>
             </div>
-        </nav>
+            {view === 'roster' && (
+                <button onClick={handleClearRoster} title="Clear the live roster" className="flex items-center justify-center gap-2 h-[42px] px-3 text-sm font-medium rounded-md transition-colors duration-200 bg-red-600 text-white hover:bg-red-700 no-print">
+                    <TrashIcon className="w-5 h-5 mr-1" />
+                    <span>Clear Roster</span>
+                </button>
+            )}
+          </div>
 
-        <main className="print-area">
-          {error && <div className="my-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg" role="alert"><p className="font-bold">An Error Occurred</p><p>{error}</p></div>}
-          
-          {view === 'roster' && liveRoster &&
-            <AssignmentGrid roster={liveRoster} onRosterChange={handleLiveRosterChange} availableDayNurses={availableNurses.day} availableNightNurses={availableNurses.night} />
-          }
+          {/* Print Button */}
+          <div className="mb-4 no-print">
+            <button
+              onClick={() => window.print()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
+            >
+              Print This Page
+            </button>
+          </div>
 
-          {view === 'dashboard' &&
-            <Dashboard 
-              {...dashboardData}
-              nursesToDisplay={nursesToDisplay}
-              searchTerm={searchTerm}
-              onSearchTermChange={setSearchTerm}
-              sortBy={sortBy}
-              onSortByChange={setSortBy}
-              assignmentFilters={assignmentFilters}
-              onAssignmentFilterChange={handleAssignmentFilterChange}
-              chargeNurseFilter={chargeNurseFilter}
-              onChargeNurseFilterChange={setChargeNurseFilter}
-              onExport={handleExport}
-              onClearFilters={clearFilters}
-              isAnyFilterActive={searchTerm !== '' || chargeNurseFilter !== '' || assignmentFilters.size > 0}
-              onFilesSelected={handleFilesProcessing}
-              onClearHistory={handleClearHistory}
-              isLoading={isLoading}
-              historicalRosterCount={historicalRosters.length}
-            />
-          }
-        </main>
-      </div>
+           <nav className="flex items-center gap-4 mb-4 no-print">
+              <div className="flex items-center gap-2 p-1.5 bg-gray-200/70 rounded-lg">
+                <NavButton currentView={view} targetView="roster" setView={setView}><FileTextIcon className="w-5 h-5" /> Roster</NavButton>
+                <NavButton currentView={view} targetView="dashboard" setView={setView}><BriefcaseIcon className="w-5 h-5" /> Dashboard</NavButton>
+              </div>
+          </nav>
+        </div>
+      </header>
+
+      <main className="p-4 sm:p-6 lg:p-8">
+        {error && <div className="my-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg" role="alert"><p className="font-bold">An Error Occurred</p><p>{error}</p></div>}
+
+        {view === 'roster' ? (
+          <AssignmentGrid 
+            roster={liveRoster} 
+            onRosterChange={handleLiveRosterChange} 
+            onClearRoster={handleClearRoster}
+            availableNurses={availableNurses}
+          />
+        ) : (
+          <Dashboard 
+            nurseStats={dashboardData.nurseStats}
+            summaryStats={dashboardData.summaryStats}
+            allChargeNursesForFilter={dashboardData.allChargeNursesForFilter}
+            rosterDate={dashboardData.rosterDate}
+            nursesToDisplay={nursesToDisplay}
+            searchTerm={searchTerm}
+            onSearchTermChange={setSearchTerm}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            assignmentFilters={assignmentFilters}
+            onAssignmentFilterChange={handleAssignmentFilterChange}
+            chargeNurseFilter={chargeNurseFilter}
+            onChargeNurseFilterChange={setChargeNurseFilter}
+            onExport={handleExport}
+            onClearFilters={clearFilters}
+            isAnyFilterActive={searchTerm !== '' || chargeNurseFilter !== '' || assignmentFilters.size > 0}
+            onFilesSelected={handleFilesProcessing}
+            onClearHistory={handleClearHistory}
+            isLoading={isLoading}
+            historicalRosterCount={historicalRosters.length}
+          />
+        )}
+      </main>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Roster, AssignmentRow } from '../types';
-
 declare const mammoth: any;
 
+// --- Utility: Read .docx file as HTML ---
 export async function readDocxFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -11,7 +11,7 @@ export async function readDocxFile(file: File): Promise<string> {
           const result = await mammoth.convertToHtml({ arrayBuffer: event.target.result });
           resolve(result.value);
         } catch (err) {
-          reject(new Error("Failed to parse .docx file. It might be corrupted or in an unsupported format."));
+          reject(new Error("Failed to parse .docx file."));
         }
       } else {
         reject(new Error("Failed to read file."));
@@ -22,245 +22,170 @@ export async function readDocxFile(file: File): Promise<string> {
   });
 }
 
-// Helper to get text from a cell, cleaning it up.
-const getCellText = (cell: HTMLElement | null | undefined): string => {
-    if (!cell) return '';
-    // Use innerText to handle line breaks within cells correctly
-    return cell.innerText.trim();
+// --- Utility: Cell and List Parsing ---
+const getCellText = (cell: HTMLElement | null | undefined): string =>
+  cell ? cell.innerText.trim() : '';
+const extractListFromCell = (cell: HTMLElement | null | undefined): string[] =>
+  getCellText(cell).split('\n').map(s => s.trim()).filter(Boolean);
+
+// --- Utility: Advanced Date Extraction ---
+const parseDate = (input: string): string => {
+  // Supports "Friday, April 4th, 2025" and variants
+  const dateRegex = /\b(?:mon|tue|wed|thu|fri|sat|sun)\w*,?\s+\w+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/i;
+  const match = input.match(dateRegex);
+  if (match) {
+    const cleaned = match[0].replace(/(\d{1,2})(st|nd|rd|th)/, '$1').replace(/,\s+/g, ' ');
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  }
+  // fallback: try to parse any ISO or US date format in string
+  const fallbackMatch = input.match(/\d{4}-\d{2}-\d{2}/) || input.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/);
+  if (fallbackMatch) {
+    const d = new Date(fallbackMatch[0]);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  }
+  return new Date().toISOString().split('T')[0];
 };
 
-// Helper to extract a list of names from a single cell's text content
-const extractListFromCell = (cell: HTMLElement | null | undefined): string[] => {
-    if (!cell) return [];
-    return getCellText(cell).split('\n').map(s => s.trim()).filter(Boolean);
-};
+// --- Utility: Header Column Mapping ---
+function autoMapHeaders(headerCells: string[], keys: string[]): { [k: string]: number } {
+  // Fuzzy map columns for each key (robust to extra columns, typos, etc.)
+  const colIdx: { [k: string]: number } = {};
+  for (const key of keys) {
+    const idx = headerCells.findIndex(h => h.replace(/\s/g, '').toLowerCase().includes(key.toLowerCase().replace(/\s/g, '')));
+    colIdx[key] = idx;
+  }
+  return colIdx;
+}
 
+// --- Main Assignment Grid + Bottom Sections ---
+function parseAssignmentsAndBottomSection(rows: HTMLTableRowElement[], startRoom = 501, endRoom = 532): {
+  assignments: AssignmentRow[],
+  floats: { day: string[], night: string[] },
+  respiratory: string[]
+} {
+  const numRooms = endRoom - startRoom + 1;
+  const assignments: AssignmentRow[] = Array.from({ length: numRooms }, (_, i) => ({
+    room: (startRoom + i).toString(),
+    prec: '', patient: '', mrn: '', status: '',
+    rnDay: '', extDay: '', rnNight: '', extNight: '',
+  }));
+  let floats = { day: [], night: [] };
+  let respiratory: string[] = [];
 
-/**
- * Parses the top information table (Teams, PCTs, Charge Nurses).
- */
+  // Find grid header
+  const headerRowIdx = rows.findIndex(r => r.innerText && r.innerText.toUpperCase().includes('ROOM') && r.innerText.toUpperCase().includes('PATIENT'));
+  if (headerRowIdx === -1) throw new Error('Assignment table header not found.');
+  const headerRow = rows[headerRowIdx];
+  const headerCells = Array.from(headerRow.querySelectorAll<HTMLElement>('th,td')).map(getCellText);
+  const colMap = autoMapHeaders(headerCells, ['room', 'prec', 'patient', 'mrn', 'status', 'rnday', 'extday', 'rnnight', 'extnight']);
+
+  // End grid at first row containing any bottom label
+  let gridEndIdx = rows.findIndex((r, i) => i > headerRowIdx && /(FLOAT|RESPIRATORY|CPU)/i.test(r.innerText));
+  if (gridEndIdx === -1) gridEndIdx = rows.length;
+
+  // Assignment parsing loop
+  for (let i = headerRowIdx + 1; i < gridEndIdx; ++i) {
+    const row = rows[i];
+    if (!row || !row.cells) continue;
+    const cells = Array.from(row.cells);
+    const roomStr = getCellText(cells[colMap['room']]);
+    const room = parseInt(roomStr, 10);
+    if (!isNaN(room) && room >= startRoom && room <= endRoom) {
+      const idx = room - startRoom;
+      assignments[idx] = {
+        room: roomStr,
+        prec: getCellText(cells[colMap['prec']]),
+        patient: getCellText(cells[colMap['patient']]),
+        mrn: getCellText(cells[colMap['mrn']]),
+        status: getCellText(cells[colMap['status']]),
+        rnDay: getCellText(cells[colMap['rnday']]),
+        extDay: getCellText(cells[colMap['extday']]),
+        rnNight: getCellText(cells[colMap['rnnight']]),
+        extNight: getCellText(cells[colMap['extnight']]),
+      };
+    }
+  }
+
+  // --- Bottom Section ---
+  for (let i = gridEndIdx; i < rows.length; ++i) {
+    const row = rows[i];
+    const txt = row.innerText.toUpperCase();
+    if (txt.includes('FLOATS') || txt.includes('FLOAT')) {
+      if (txt.includes('7A-7P')) floats.day = extractListFromCell(row.cells[0]);
+      if (txt.includes('7P-7A')) floats.night = extractListFromCell(row.cells[0]);
+    }
+    if (txt.includes('RESPIRATORY')) respiratory = extractListFromCell(row.cells[0]);
+  }
+  return { assignments, floats, respiratory };
+}
+
+// --- Info Table/Block Parsing ---
 function parseInfoTable(table: HTMLTableElement): Partial<Roster> {
-    const rosterPart: Partial<Roster> = {
-        chargeNurses: { day: '', night: '' },
-    };
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const roster: Partial<Roster> = { chargeNurses: { day: '', night: '' } };
 
-    const rows = Array.from(table.querySelectorAll('tr'));
-    
-    const getRowTextFromCells = (row: HTMLTableRowElement) => Array.from(row.cells).map(getCellText).join(' ');
-
-    // Day Shift Row (usually the first complex one)
-    const dayRow = rows.find(r => getRowTextFromCells(r).includes('7A-7P'));
-    if (dayRow) {
-        // Try to find a cell that starts with 'DATE' (legacy)
-        let dateCell = Array.from(dayRow.cells).find(c => getCellText(c).toUpperCase().startsWith('DATE'));
-        let dateText = '';
-        if (dateCell) {
-            dateText = getCellText(dateCell).replace(/DATE:?/i, '').trim();
-        } else {
-            // Try to find a cell that looks like a date (e.g., 'Friday, April 4th, 2025')
-            dateCell = Array.from(dayRow.cells).find(c => /\b\w+, \w+ \d{1,2}(st|nd|rd|th)?, \d{4}\b/.test(getCellText(c)));
-            if (dateCell) {
-                dateText = getCellText(dateCell).trim();
-            }
-        }
-        if (dateText) {
-            // Try to parse the date string
-            let parsedDate = new Date(dateText);
-            if (isNaN(parsedDate.getTime())) {
-                // Try to remove ordinal suffixes (st, nd, rd, th)
-                const cleaned = dateText.replace(/(\d{1,2})(st|nd|rd|th)/, '$1');
-                parsedDate = new Date(cleaned);
-            }
-            if (!isNaN(parsedDate.getTime())) {
-                const year = parsedDate.getFullYear();
-                const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-                const day = String(parsedDate.getDate()).padStart(2, '0');
-                rosterPart.date = `${year}-${month}-${day}`;
-            }
-        }
-        
-        const pctDayCell = Array.from(dayRow.cells).find(c => getCellText(c).toUpperCase().includes("PCT'S"));
-        rosterPart.pctsDay = getCellText(pctDayCell).replace(/PCT'S:?/i, '').trim();
-
-        const chargeDayCell = Array.from(dayRow.cells).find(c => getCellText(c).includes('CHARGE NURSE:'));
-        if (chargeDayCell) {
-             const match = getCellText(chargeDayCell).match(/CHARGE NURSE:\s*(#?\S+)/);
-             if(match) rosterPart.chargeNurses!.day = match[1];
-        }
+  for (const row of rows) {
+    const txt = row.innerText.toUpperCase();
+    // Parse date
+    if (!roster.date && /\b(?:mon|tue|wed|thu|fri|sat|sun)/.test(txt)) {
+      roster.date = parseDate(txt);
     }
-
-    // Night Shift Row
-    const nightRow = rows.find(r => getRowTextFromCells(r).includes('7P-7A'));
-    if (nightRow) {
-        const pctNightCell = Array.from(nightRow.cells).find(c => getCellText(c).toUpperCase().includes("PCT'S"));
-        rosterPart.pctsNight = getCellText(pctNightCell).replace(/PCT'S:?/i, '').trim();
-
-        const chargeNightCell = Array.from(nightRow.cells).find(c => getCellText(c).includes('CHARGE NURSE:'));
-        if (chargeNightCell) {
-            const match = getCellText(chargeNightCell).match(/CHARGE NURSE:\s*(#?\S+)/);
-            if(match) rosterPart.chargeNurses!.night = match[1];
-        }
+    // Parse PCTs (any shift)
+    if (txt.includes('PCT')) {
+      if (txt.includes('7A-7P') || txt.includes('DAY')) {
+        const m = row.innerText.match(/PCT\S*:?\s*(.+?)\s*(?:7[aA]-7[pP]|DAY)/);
+        if (m) roster.pctsDay = m[1].trim();
+      }
+      if (txt.includes('7P-7A') || txt.includes('NIGHT')) {
+        const m = row.innerText.match(/PCT\S*:?\s*(.+?)\s*(?:7[pP]-7[aA]|NIGHT)/);
+        if (m) roster.pctsNight = m[1].trim();
+      }
     }
-    
-    if (rosterPart.pctsDay && !rosterPart.pctsNight) {
-        rosterPart.pctsNight = rosterPart.pctsDay;
+    // Parse Charge Nurse (any shift)
+    if (txt.includes('CHARGE NURSE')) {
+      if (txt.includes('7A-7P') || txt.includes('DAY')) {
+        const m = row.innerText.match(/CHARGE NURSE:\s*([\w\-]+)/i);
+        if (m) roster.chargeNurses!.day = m[1].trim();
+      }
+      if (txt.includes('7P-7A') || txt.includes('NIGHT')) {
+        const m = row.innerText.match(/CHARGE NURSE:\s*([\w\-]+)/i);
+        if (m) roster.chargeNurses!.night = m[1].trim();
+      }
     }
-
-    return rosterPart;
+  }
+  return roster;
 }
 
-/**
- * Main parser function that orchestrates the parsing of the entire document.
- * This version is resilient to table merging during .docx conversion.
- */
-export function parseRosterFromHtml(htmlContent: string): Roster {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, 'text/html');
+// --- Main Entry ---
+export const parseRosterFromHtml = (htmlString: string): Roster => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, 'text/html');
+  const tables = doc.querySelectorAll('table');
+  // Info table: first table with "charge nurse" or fallback
+  const infoTable = Array.from(tables).find(t => (t.textContent || '').toUpperCase().includes('CHARGE NURSE')) || tables[0];
+  // Assignment tables: everything else
+  const contentRows = Array.from(tables)
+    .filter(t => t !== infoTable)
+    .flatMap(t => Array.from(t.querySelectorAll('tr')));
+  // Date fallback: whole doc body
+  const bodyText = doc.body.innerText;
+  const dateFromBody = parseDate(bodyText);
+  // Parse main data
+  const { assignments, floats, respiratory } = parseAssignmentsAndBottomSection(contentRows);
+  const { chargeNurses, pctsDay, pctsNight, date: infoDate } = parseInfoTable(infoTable);
 
-    const tables = Array.from(doc.querySelectorAll('table'));
-    if (tables.length < 2) {
-         throw new Error(`Parsing failed: Expected at least 2 tables (info, content), but found ${tables.length}.`);
-    }
-
-    // Identify info table based on keywords
-    const INFO_KEYWORDS = ['CHARGE NURSE', 'TEAM A', 'PCT\'S'];
-    const infoTable = tables.find(t => INFO_KEYWORDS.some(k => (t.textContent || '').toUpperCase().includes(k)));
-    if (!infoTable) throw new Error('Failed to identify the main information table (Charge Nurse, PCTs).');
-    
-    // Assume the rest of the content is in the other table(s). Combine them into one list of rows.
-    const contentRows = tables
-        .filter(t => t !== infoTable)
-        .flatMap(t => Array.from(t.querySelectorAll('tr')));
-
-    const GRID_HEADER_KEYWORDS = ['RM', 'PATIENT', 'RN DAYS', 'RN NIGHTS'];
-    const BOTTOM_HEADER_KEYWORDS = ['RESPIRATORY THERAPISTS', 'FLOATS (DAYS)', 'FLOATS (NIGHTS)'];
-
-    let gridHeaderIndex = -1;
-    let bottomHeaderIndex = -1;
-    
-    let maxGridScore = 0;
-    let maxBottomScore = 0;
-
-    const getRowTextFromCells = (row: HTMLTableRowElement) => {
-        return Array.from(row.querySelectorAll<HTMLElement>('th, td')).map(getCellText).join(' ').toUpperCase();
-    }
-
-    // Find the best candidate row for each header based on score
-    contentRows.forEach((row, index) => {
-        const rowText = getRowTextFromCells(row);
-        
-        const gridScore = GRID_HEADER_KEYWORDS.filter(k => rowText.includes(k)).length;
-        if (gridScore > maxGridScore) {
-            maxGridScore = gridScore;
-            gridHeaderIndex = index;
-        }
-
-        const bottomScore = BOTTOM_HEADER_KEYWORDS.filter(k => rowText.includes(k)).length;
-        if (bottomScore > maxBottomScore) {
-            maxBottomScore = bottomScore;
-            bottomHeaderIndex = index;
-        }
-    });
-    
-    // Validate the findings
-    if (gridHeaderIndex === -1 || maxGridScore < 3) { // Require at least 3 of 4 keywords
-        throw new Error('Could not find the main assignment grid header row (RM, PATIENT, etc.). Please check file formats.');
-    }
-
-    // The bottom header must be different, come after the grid header, and have a decent score
-    if (bottomHeaderIndex === gridHeaderIndex || bottomHeaderIndex < gridHeaderIndex || maxBottomScore < 2) {
-        bottomHeaderIndex = -1; // Invalidate if it's not a good candidate
-    }
-
-    // --- Parse Main Grid ---
-    const gridBodyEndIndex = bottomHeaderIndex !== -1 ? bottomHeaderIndex : contentRows.length;
-    const gridRows = contentRows.slice(gridHeaderIndex, gridBodyEndIndex);
-    const mainGridHeaderRow = gridRows[0];
-    const mainGridBodyRows = gridRows.slice(1);
-
-    const initialAssignments: AssignmentRow[] = Array.from({ length: 32 }, (_, i) => ({
-        room: (501 + i).toString(), prec: '', patient: '', mrn: '', status: '',
-        rnDay: '', extDay: '', rnNight: '', extNight: '',
-    }));
-
-    const headerCells = Array.from(mainGridHeaderRow.querySelectorAll<HTMLElement>('th, td')).map(c => getCellText(c).toUpperCase());
-    const colIdx: { [key: string]: number } = {};
-    const getIndex = (text: string) => headerCells.findIndex(h => h.includes(text));
-
-    colIdx.rm = getIndex('RM');
-    colIdx.prec = getIndex('PREC');
-    colIdx.patient = getIndex('PATIENT');
-    colIdx.mrn = getIndex('MRN');
-    colIdx.status = getIndex('STATUS');
-    colIdx.rnDay = getIndex('RN DAYS');
-    colIdx.rnNight = getIndex('RN NIGHTS');
-    
-    const extIndices = headerCells.map((h, i) => h.includes('EXT') ? i : -1).filter(i => i > -1);
-    colIdx.extDay = extIndices.find(i => i > colIdx.rnDay && i < (colIdx.rnNight > -1 ? colIdx.rnNight : Infinity)) ?? -1;
-    colIdx.extNight = extIndices.find(i => i > colIdx.rnNight) ?? -1;
-
-    if (colIdx.rm !== -1) {
-      mainGridBodyRows.forEach(row => {
-          const cells = Array.from(row.cells);
-          const roomNumberStr = getCellText(cells[colIdx.rm]);
-          if (roomNumberStr) {
-              const roomNumber = parseInt(roomNumberStr, 10);
-              if (!isNaN(roomNumber) && roomNumber >= 501 && roomNumber <= 532) {
-                  const index = roomNumber - 501;
-                  initialAssignments[index] = {
-                      room: roomNumberStr,
-                      prec: getCellText(cells[colIdx.prec]),
-                      patient: getCellText(cells[colIdx.patient]),
-                      mrn: getCellText(cells[colIdx.mrn]),
-                      status: getCellText(cells[colIdx.status]),
-                      rnDay: getCellText(cells[colIdx.rnDay]),
-                      extDay: getCellText(cells[colIdx.extDay]),
-                      rnNight: getCellText(cells[colIdx.rnNight]),
-                      extNight: getCellText(cells[colIdx.extNight]),
-                  };
-              }
-          }
-      });
-    }
-
-    // --- Parse Bottom Section ---
-    const bottomPart: Pick<Roster, 'floats' | 'respiratory'> = {
-        floats: { day: [], night: [] },
-        respiratory: [],
-    };
-    if (bottomHeaderIndex !== -1) {
-        const bottomRows = contentRows.slice(bottomHeaderIndex);
-        if (bottomRows.length > 1) {
-            const bottomHeaderRow = bottomRows[0];
-            const bottomDataRow = bottomRows[1];
-            
-            const bottomHeaderCells = Array.from(bottomHeaderRow.querySelectorAll<HTMLElement>('th, td'));
-            const bottomDataCells = Array.from(bottomDataRow.querySelectorAll('td'));
-
-            const headerMap = bottomHeaderCells.reduce((acc, cell, index) => {
-                const text = getCellText(cell).toUpperCase();
-                if (text.includes('RESPIRATORY')) acc.respiratory = index;
-                if (text.includes('FLOATS (DAYS)')) acc.floatsDay = index;
-                if (text.includes('FLOATS (NIGHTS)')) acc.floatsNight = index;
-                return acc;
-            }, {} as { respiratory?: number, floatsDay?: number, floatsNight?: number });
-
-            if (headerMap.respiratory !== undefined) bottomPart.respiratory = extractListFromCell(bottomDataCells[headerMap.respiratory]);
-            if (headerMap.floatsDay !== undefined) bottomPart.floats.day = extractListFromCell(bottomDataCells[headerMap.floatsDay]);
-            if (headerMap.floatsNight !== undefined) bottomPart.floats.night = extractListFromCell(bottomDataCells[headerMap.floatsNight]);
-        }
-    }
-
-    // --- Combine and Finalize ---
-    const infoPart = parseInfoTable(infoTable);
-    const finalDate = infoPart.date || new Date().toISOString().split('T')[0];
-
-    return {
-        date: finalDate,
-        pctsDay: infoPart.pctsDay || '',
-        pctsNight: infoPart.pctsNight || '',
-        chargeNurses: infoPart.chargeNurses || { day: '', night: '' },
-        assignments: initialAssignments,
-        ...bottomPart,
-    };
-}
+  // Date order: infoTable > body > now
+  const finalDate = infoDate || dateFromBody || new Date().toISOString().split('T')[0];
+  return {
+    date: finalDate,
+    pctsDay: pctsDay || '',
+    pctsNight: pctsNight || '',
+    chargeNurses: chargeNurses || { day: '', night: '' },
+    assignments,
+    floats,
+    respiratory,
+  };
+};
